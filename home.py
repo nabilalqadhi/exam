@@ -1,18 +1,52 @@
 import streamlit as st
 
+# Add RTL CSS styling
+st.markdown("""
+<style>
+    * {
+        direction: rtl;
+        text-align: right;
+    }
+    
+    /* Reverse radio button alignment */
+    [data-testid=stVerticalBlock] > div > label > div {
+        flex-direction: row-reverse;
+        justify-content: flex-end;
+    }
+    
+    /* Radio button label alignment */
+    [data-testid=stVerticalBlock] > div > label {
+        text-align: right;
+        padding-right: 10px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Title
 st.title("الاختبار النهائي لمهارات الحاسب الآلي (102 تقن)")
 
 # Instructions
 st.markdown("""
 ## التعليمات:
-- يتكون الاختبار من ثلاثة أقسام.
-- اقرأ الأسئلة بعناية وأجب عن جميع الأقسام.
+- يتكون الاختبار من ثلاثة أقسام
+- اقرأ الأسئلة بعناية وأجب عن جميع الأقسام
 """)
+
+# Reset button at the top-right
+col1, col2, col3 = st.columns([4, 2, 2])
+with col3:
+    if st.button("إعادة البدء"):
+        # Clear all relevant session state keys
+        for key in list(st.session_state.keys()):
+            if key in ['score'] or isinstance(key, int) or key.startswith('btn_'):
+                del st.session_state[key]
+
+# Initialize score in session state
+if 'score' not in st.session_state:
+    st.session_state.score = 0
 
 # Questions and Answers
 def main():
-    score = 0
     total_questions = 6
 
     questions = [
@@ -54,14 +88,13 @@ def main():
         if st.button(f"إرسال الإجابة {i + 1}", key=f"btn_{i}"):
             if user_answer == q["answer"]:
                 st.success("مبروك! إجابتك صحيحة.")
-                score += 1
+                st.session_state.score += 1
             else:
                 st.error(f"إجابة خاطئة. الإجابة الصحيحة هي: {q['answer']}")
 
     # Final Score
     if st.button("عرض النتيجة النهائية"):
-        st.write(f"## نتيجتك النهائية: {score}/{total_questions}")
+        st.write(f"## نتيجتك النهائية: {st.session_state.score}/{total_questions}")
 
 if __name__ == "__main__":
     main()
-
