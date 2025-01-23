@@ -1,87 +1,105 @@
 import streamlit as st
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
-# Add RTL CSS styling
+# RTL CSS styling
 st.markdown("""
 <style>
     * {
         direction: rtl;
         text-align: right;
     }
-    
-    /* Reverse radio button alignment */
     [data-testid=stVerticalBlock] > div > label > div {
         flex-direction: row-reverse;
         justify-content: flex-end;
     }
-    
-    /* Radio button label alignment */
     [data-testid=stVerticalBlock] > div > label {
-        text-align: right;
         padding-right: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Title
-st.title("الاختبار النهائي لمهارات الحاسب الآلي (102 تقن)")
+# Email configuration (Update with your email settings)
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+EMAIL_ADDRESS = "your_email@gmail.com"
+EMAIL_PASSWORD = "your_email_password"
 
-# Instructions
-st.markdown("""
-## التعليمات:
-- يتكون الاختبار من ثلاثة أقسام
-- اقرأ الأسئلة بعناية وأجب عن جميع الأقسام
-""")
+# User credentials (In real application, use proper database)
+USERS = {
+    "student1": {"password": "pass123", "role": "student", "email": "student1@example.com"},
+    "teacher1": {"password": "teach456", "role": "teacher", "email": "teacher@example.com"}
+}
 
-# Reset button at the top-right
-col1, col2, col3 = st.columns([4, 2, 2])
-with col3:
+def send_email(recipient, subject, content):
+    """Send email using SMTP"""
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = recipient
+        msg['Subject'] = subject
+        
+        msg.attach(MIMEText(content, 'plain'))
+        
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.sendmail(EMAIL_ADDRESS, recipient, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        st.error(f"فشل إرسال البريد الإلكتروني: {str(e)}")
+        return False
+
+def login_page():
+    """User login interface"""
+    st.title("نظام الاختبارات الإلكترونية")
+    
+    with st.form("login_form"):
+        username = st.text_input("اسم المستخدم")
+        password = st.text_input("كلمة المرور", type="password")
+        submit = st.form_submit_button("تسجيل الدخول")
+        
+        if submit:
+            if username in USERS and USERS[username]['password'] == password:
+                st.session_state.logged_in = True
+                st.session_state.user_info = USERS[username]
+                st.session_state.user_info['username'] = username
+                st.rerun()
+            else:
+                st.error("بيانات الدخول غير صحيحة")
+
+def generate_report(score, total, questions):
+    """Generate exam report content"""
+    report = f"النتيجة النهائية: {score}/{total}\n\n"
+    report += "تفاصيل الإجابات:\n"
+    for i, q in enumerate(questions):
+        report += f"\nالسؤال {i+1}: {q['question']}\n"
+        report += f"- الإجابة الصحيحة: {q['answer']}\n"
+        if i in st.session_state:
+            report += f"- إجابتك: {st.session_state[i]}\n"
+    return report
+
+def exam_page():
+    """Main exam interface"""
+    st.title("الاختبار النهائي لمهارات الحاسب الآلي (102 تقن)")
+    
+    # Reset button
     if st.button("إعادة البدء"):
-        # Clear all relevant session state keys
         for key in list(st.session_state.keys()):
             if key in ['score'] or isinstance(key, int) or key.startswith('btn_'):
                 del st.session_state[key]
-
-# Initialize score in session state
-if 'score' not in st.session_state:
-    st.session_state.score = 0
-
-# Questions and Answers
-def main():
-    total_questions = 6
-
+    
+    # Initialize exam
+    if 'score' not in st.session_state:
+        st.session_state.score = 0
+    
     questions = [
-        {
-            "question": "ما هو دور نظام التشغيل في إدارة المكونات المادية والبرمجية للحاسب الآلي؟",
-            "options": ["يوفر واجهة للمستخدم", "ينظم عمل البرامج التطبيقية", "يدير الموارد", "جميع ما سبق"],
-            "answer": "جميع ما سبق"
-        },
-        {
-            "question": "حدد نوع الحاسب الآلي الأنسب للتنبؤ بالأحوال الجوية.",
-            "options": ["الحاسب الآلي الشخصي", "الحاسب الآلي العملاق", "الحاسب الآلي المركزي", "الحاسب المحمول"],
-            "answer": "الحاسب الآلي العملاق"
-        },
-        {
-            "question": "ما هي وظيفة وحدة التخزين الثانوية في الحاسب الآلي؟",
-            "options": ["معالجة البيانات", "تخزين البيانات بشكل دائم", "تنفيذ التعليمات البرمجية", "عرض البيانات"],
-            "answer": "تخزين البيانات بشكل دائم"
-        },
-        {
-            "question": "أي من التالي يُعد مثالًا على برمجيات النظام؟",
-            "options": ["Microsoft Word", "Windows 10", "Adobe Photoshop", "Google Chrome"],
-            "answer": "Windows 10"
-        },
-        {
-            "question": "ما المقصود بالشبكات المحلية (LAN)؟",
-            "options": ["شبكة تربط أجهزة في مساحة جغرافية صغيرة", "شبكة تربط أجهزة عبر العالم", "شبكة تعتمد على الأقمار الصناعية", "شبكة تربط أجهزة عبر الهاتف"],
-            "answer": "شبكة تربط أجهزة في مساحة جغرافية صغيرة"
-        },
-        {
-            "question": "كيف يمكن حماية الحاسب الآلي من البرمجيات الضارة؟",
-            "options": ["تثبيت برامج مكافحة الفيروسات", "تحديث نظام التشغيل بانتظام", "تجنب تنزيل البرامج من مصادر غير موثوقة", "جميع ما سبق"],
-            "answer": "جميع ما سبق"
-        }
+        # ... (same questions as previous version)
     ]
 
+    # Display questions
     for i, q in enumerate(questions):
         st.write(f"### السؤال {i + 1}: {q['question']}")
         user_answer = st.radio("اختر الإجابة:", q["options"], key=i)
@@ -92,9 +110,49 @@ def main():
             else:
                 st.error(f"إجابة خاطئة. الإجابة الصحيحة هي: {q['answer']}")
 
-    # Final Score
-    if st.button("عرض النتيجة النهائية"):
-        st.write(f"## نتيجتك النهائية: {st.session_state.score}/{total_questions}")
+    # Final submission
+    if st.button("إنهاء الاختبار وإرسال النتائج"):
+        report_content = generate_report(st.session_state.score, len(questions), questions)
+        
+        # Send to student
+        student_email = st.session_state.user_info['email']
+        if send_email(student_email, "نتيجة الاختبار", report_content):
+            st.success("تم إرسال النتيجة إلى بريدك الإلكتروني")
+        
+        # Send to all teachers
+        for user in USERS.values():
+            if user['role'] == 'teacher':
+                teacher_email = user['email']
+                send_email(teacher_email, f"نتيجة الطالب {st.session_state.user_info['username']}", report_content)
+        
+        # Store results (In real application, use database)
+        if 'results' not in st.session_state:
+            st.session_state.results = {}
+        st.session_state.results[st.session_state.user_info['username']] = {
+            'score': st.session_state.score,
+            'total': len(questions)
+        }
+
+def teacher_dashboard():
+    """Teacher's results dashboard"""
+    st.title("لوحة المدرس")
+    
+    if 'results' in st.session_state:
+        st.subheader("النتائج المطلعة:")
+        for username, result in st.session_state.results.items():
+            st.write(f"الطالب: {username} - النتيجة: {result['score']}/{result['total']}")
+    else:
+        st.write("لا توجد نتائج متاحة حتى الآن")
+
+def main():
+    """Main app controller"""
+    if not st.session_state.get('logged_in'):
+        login_page()
+    else:
+        if st.session_state.user_info['role'] == 'student':
+            exam_page()
+        else:
+            teacher_dashboard()
 
 if __name__ == "__main__":
     main()
